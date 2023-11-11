@@ -3,15 +3,15 @@ import torch.nn as nn
 
 
 class LSTM(nn.Module):
-    def __init__(self, input_size, hidden_size, num_layers, num_classes, device):
+    def __init__(self, input_size, hidden_size, num_layers, output_size, device):
         super(LSTM, self).__init__()
         self.hidden_size = hidden_size
         self.num_layers = num_layers
-        self.num_classes = num_classes
+        self.output_size = output_size
 
         self.device = device
         self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True)
-        self.fc_0 = nn.Linear(hidden_size, self.num_classes)
+        self.fc_0 = nn.Linear(hidden_size, self.output_size)
 
     def forward(self, x):
         x = x.to(torch.float32)

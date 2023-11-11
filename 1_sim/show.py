@@ -15,7 +15,7 @@ act_list = data["act_list"].T
 # dir_list: segment, 3, 3, steps
 # pos_list: segment*2, steps
 
-fig = plt.figure(figsize=(5,5))
+fig = plt.figure(figsize=(10, 10))
 ax = fig.add_subplot(111, projection='3d')
 ax.set_xlim([-0.1, 0.1])
 ax.set_ylim([-0.1, 0.1])

@@ -6,12 +6,11 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--data_kind', type=str, default='pseran', choices=['ran', 'pseran'])
 config = parser.parse_args()
 
-par_young = 1
-par_LM = 1
 ctrl_step = 16000
 
 act_list = np.random.rand(ctrl_step,8)*2-1
 
+# pseudo random action
 if config.data_kind == 'pseran':
 	for i in range(int(ctrl_step/4)):
 		# 0-ctrl_step/4
@@ -30,7 +29,7 @@ if config.data_kind == 'pseran':
 		act_list[i+int(ctrl_step/2),2]=act_list[i+int(ctrl_step/2),0]
 		act_list[i+int(ctrl_step/2),3]=act_list[i+int(ctrl_step/2),1]
 
-pos_list, dir_list, act_list = main(ctrl_step=ctrl_step, par_young=par_young, par_LM=par_LM, act_list=act_list)
+pos_list, dir_list, act_list = main(ctrl_step=ctrl_step, act_list=act_list)
 
 np.savez('../0_files/data_'+config.data_kind, pos_list=pos_list, dir_list=dir_list, act_list=act_list)
 

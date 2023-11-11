@@ -1,4 +1,4 @@
-from model import  LSTM
+from model import LSTM
 import torch
 import torch.nn.functional as F
 import numpy as np
@@ -6,8 +6,9 @@ import os
 import time
 import datetime
 
+
 class Solver(object):
-    """Solver for training and testing StarGAN."""
+    """Solver for training and testing."""
 
     def __init__(self, loader_train, loader_test, config):
         """Initialize configurations."""
@@ -53,9 +54,10 @@ class Solver(object):
         # Build the model.
         self.build_model()
 
-    def build_model(self, input_size=13, hidden_size=128, num_layers=4, num_classes=8):
+    def build_model(self, input_size=13, hidden_size=128, num_layers=4, output_size=8):
         """Create a classifier."""
-        self.LSTM = LSTM(input_size=input_size, hidden_size=hidden_size, num_layers=num_layers, num_classes=num_classes, device=self.device)
+        self.LSTM = LSTM(input_size=input_size, output_size=output_size,
+                         hidden_size=hidden_size, num_layers=num_layers, device=self.device)
         self.optimizer = torch.optim.Adam(self.LSTM.parameters(), self.r_lr, [self.beta1, self.beta2])
         self.print_network(self.LSTM, 'LSTM')
         self.LSTM.to(self.device)
@@ -72,7 +74,6 @@ class Solver(object):
     def restore_model(self, resume_iters):
         """Restore the trained classifier."""
         ResNet_path = os.path.join(self.model_save_dir, 'LSTM-{}.ckpt'.format(self.model_name))
-        # self.ANN.load_state_dict(torch.load(ResNet_path, map_location=lambda storage, loc: storage))
         self.LSTM.load_state_dict(torch.load(ResNet_path, map_location=lambda storage, loc: storage))
 
     def reset_grad(self):
@@ -81,7 +82,7 @@ class Solver(object):
 
     def training_loss(self, logit, target):
         """Compute mse loss."""
-        return F.mse_loss(logit.float(), target.float(),reduction='sum')
+        return F.mse_loss(logit.float(), target.float(), reduction='sum')
 
     def save_checkpoint(self):
         LSTM_path = os.path.join(self.model_save_dir, 'LSTM-{}.ckpt'.format(self.model_name))
@@ -93,7 +94,8 @@ class Solver(object):
             self.best_score = score
         elif score < self.best_score + self.delta:
             self.counter += 1
-            print('EarlyStopping counter: %d out of %d, best score:%.3f, current score:%.3f'%(self.counter, self.patience,self.best_score,score))
+            print('EarlyStopping counter: %d out of %d, best score:%.3f, current score:%.3f'
+                  % (self.counter, self.patience, self.best_score, score))
             if self.counter >= self.patience:
                 self.early_stop = True
         else:
@@ -114,7 +116,7 @@ class Solver(object):
         seg_input = seg_input.to(self.device)
         output = output.to(self.device)
 
-        # Learning rate cache for decaying.
+        # Learning rate.
         r_lr = self.r_lr
 
         # Start training from scratch or resume training.
@@ -128,7 +130,6 @@ class Solver(object):
         start_time = time.time()
         for i in range(start_iters, self.num_iters):
 
-
             # =================================================================================== #
             #                             1. Preprocess input data                                #
             # =================================================================================== #
@@ -136,7 +137,6 @@ class Solver(object):
             # Fetch real images and labels.
             try:
                 seg_input, output = next(train_data_iter)
-
             except:
                 train_data_iter = iter(train_data_loader)
                 seg_input, output = next(train_data_iter)
@@ -148,7 +148,7 @@ class Solver(object):
             # #                             2. Train the classifier                                 #
             # # =================================================================================== #
 
-            #Compute loss with real images.
+            # Compute loss with real samples.
             est_output = self.LSTM(seg_input)
             loss_t = self.training_loss(est_output, output)
 
@@ -158,8 +158,7 @@ class Solver(object):
             self.optimizer.step()
 
             # Logging.
-            loss = {}
-            loss['loss'] = loss_t.item()
+            loss = {'loss': loss_t.item()}
 
             # =================================================================================== #
             #                                 3. Miscellaneous                                    #
@@ -191,16 +190,12 @@ class Solver(object):
                         output = output.cpu().numpy()
                         err = err + np.mean(np.abs(est_output-output))
                 self.early_stop_check(err)
-            if self.early_stop == True:
+            if self.early_stop:
                 break
-
-            # Save model checkpoints.
-            if (i+1) % self.model_save_step == 0:
-                self.save_checkpoint()
 
     def test(self):
 
-        # Load the trained classifier.
+        # Load the trained NN.
         self.restore_model(self.test_iters)
 
         # Load the dataset.
@@ -220,7 +215,7 @@ class Solver(object):
                     err_act[num] = np.abs(act_est[k]-act[k])
                     num += 1
 
-                print(act[0, -1])
-                print(act_est[0, -1])
+                print("real      action: {}".format(act[0, -1]))
+                print("estimated action: {}".format(act_est[0, -1]))
 
-            print("err:%.3f" % (np.mean(err_act[:, -1])*100))
+            print("err:%.3f" % (np.mean(err_act[:, -1])*100/2))

@@ -6,10 +6,9 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--task', type=str, default='p', choices=['p', 'o'])
 config = parser.parse_args()
 
-par_young = 1
-par_LM = 1
 ctrl_step = 500
 
+# trajectory p
 if config.task == 'p':
     ang = 0.8
     x_tar = np.zeros(ctrl_step)
@@ -18,6 +17,7 @@ if config.task == 'p':
     ay_tar = np.sin(np.linspace(0, 2 * np.pi, ctrl_step))
     az_tar = np.ones(ctrl_step)*ang
 
+# trajectory o
 else:
     ang = 1
     x_tar = np.zeros(ctrl_step)
@@ -39,9 +39,8 @@ else:
     ax_tar[part:] = np.cos(np.linspace(0, 2*np.pi, ctrl_step-part))
     ay_tar[part:] = np.sin(np.linspace(0, 2*np.pi, ctrl_step-part))
 
-
 rest = 1-np.square(ang)
-if rest<1e-10:
+if rest < 1e-10:
     ax_tar = np.zeros(ctrl_step)
     ay_tar = np.zeros(ctrl_step)
 else:
@@ -49,8 +48,9 @@ else:
         ax_tar[i] = np.sqrt(np.square(ax_tar[i])*rest)*np.sign(ax_tar[i])
         ay_tar[i] = np.sqrt(np.square(ay_tar[i])*rest)*np.sign(ay_tar[i])
 
+# simulation
 pos_list, dir_list, act_list, real_list, shape_list = main(ctrl_step=ctrl_step,
                                                            tar_list=(x_tar, y_tar, ax_tar, ay_tar, az_tar))
-#
-np.savez('../0_files/data_follow_'+str(config.task),pos_list=pos_list, dir_list=dir_list, act_list=act_list,
+# save robot motion
+np.savez('../0_files/data_follow_'+str(config.task), pos_list=pos_list, dir_list=dir_list, act_list=act_list,
          real_list=real_list, shape_list=shape_list)

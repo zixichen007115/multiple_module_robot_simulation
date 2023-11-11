@@ -1,34 +1,24 @@
-"""
-Created on Sep. 23, 2021
-@author: Heng-Sheng (Hanson) Chang
-"""
-
-import sys
-
-from collections import defaultdict
-import numpy as np
 import elastica as ea
 from elastica import *
 from elastica.timestepper import extend_stepper_interface
 from elastica._calculus import _isnan_check
 
-from coomm.actuations.muscles import force_length_weight_guassian, force_length_weight_poly
+from coomm.actuations.muscles import force_length_weight_poly
 from coomm.actuations.muscles import (
     MuscleGroup,
     LongitudinalMuscle,
-    ObliqueMuscle,
-    TransverseMuscle,
     ApplyMuscleGroups
 )
 
 from coomm.forces import DragForce
-from coomm.callback_func import RodCallBack, CylinderCallBack
+from coomm.callback_func import RodCallBack
 
 class BaseSimulator(BaseSystemCollection, Constraints, Connections, Forcing, CallBacks):
     pass
 
 class ArmEnvironment:
-    def __init__(self, final_time, time_step=3.0e-4, recording_fps=10, youngs_modulus=10_000, LM_ratio_muscle_position_parameter=0.0075):
+    def __init__(self, final_time, time_step=3.0e-4, recording_fps=10, youngs_modulus=10_000,
+                 LM_ratio_muscle_position_parameter=0.0075):
         # Integrator type
         self.StatefulStepper = PositionVerlet()
 
@@ -63,16 +53,12 @@ class ArmEnvironment:
         n_elements = 100        # number of discretized elements of the arm
         base_length = 0.2       # total length of the arm
 
-        # radius_base = 0.014     # radius of the arm at the base
-        # radius_tip = 0.0014     # radius of the arm at the tip
         radius_base = 0.01     # radius of the arm at the base
         radius_tip  = 0.01     # radius of the arm at the tip
 
         radius = np.linspace(radius_base, radius_tip, n_elements+1)
-        # radius = np.linspace(radius_base, radius_tip, n_elements+1)
 
         radius_mean = (radius[:-1]+radius[1:])/2
-        # radius_mean = (radius[::-1]+radius)/2
 
         damp_coefficient = 0.05
 
@@ -81,16 +67,12 @@ class ArmEnvironment:
             start=np.zeros((3,)),
             direction=np.array([0.0, 0.0, 1.0]),
             normal=np.array([1.0, 0.0, 0.0]),
-            # direction=np.array([0.0, 0.0, 1.0]),
-            # normal=np.array([0.0, 0.0, 1.0]),
             base_length=base_length,
             base_radius=radius_mean.copy(),
             density=1050,
             nu=damp_coefficient*((radius_mean/radius_base)**2),
             youngs_modulus=self.youngs_modulus,
-            shear_modulus=self.youngs_modulus / (2*(1 + self.poisson_ratio)), 
-            # shear_modulus = youngs_modulus/ (2*(1+poisson_ratio))
-            # poisson_ratio=0.5, Default is 0.5
+            shear_modulus=self.youngs_modulus / (2*(1 + self.poisson_ratio)),
             nu_for_torques=damp_coefficient*((radius_mean/radius_base)**4),
         )
         self.simulator.append(self.shearable_rod)
@@ -118,54 +100,24 @@ class ArmEnvironment:
             muscle_groups = []
 
             LM_ratio_muscle_position = self.LM_ratio_muscle_position_parameter/radius_base
-            # LM_ratio_muscle_position = 0.0075/radius_base
-
-            OM_ratio_muscle_position = 0.01125/radius_base
             
             AN_ratio_radius = 0.002/radius_base
             TM_ratio_radius = 0.0045/radius_base
 
             LM_ratio_radius = 0.003/radius_base
             OM_ratio_radius = 0.00075/radius_base
-
-            OM_rotation_number = 6
             
             shearable_rod_area = np.pi * arm.radius**2
-            TM_rest_muscle_area = shearable_rod_area*(
-                TM_ratio_radius**2-AN_ratio_radius**2
-            )
             LM_rest_muscle_area = shearable_rod_area*(
                 LM_ratio_radius**2
             )
-            OM_rest_muscle_area = shearable_rod_area*(
-                OM_ratio_radius**2
-            )
 
             # stress is in unit [Pa]
-            # TM_max_muscle_stress = 15_000.0
-            # LM_max_muscle_stress = 50_000.0
-            # OM_max_muscle_stress = 500_000.0
-            TM_max_muscle_stress =  15_000.0
             LM_max_muscle_stress =  10_000.0
-            OM_max_muscle_stress = 100_000.0
 
             muscle_dict = dict(
                 force_length_weight=force_length_weight_poly,
             )
-            
-            # # Add a transverse muscle
-            # muscle_groups.append(
-            #     MuscleGroup(
-            #         muscles=[
-            #             TransverseMuscle(
-            #                 rest_muscle_area=TM_rest_muscle_area,
-            #                 max_muscle_stress=TM_max_muscle_stress,
-            #                 **muscle_dict
-            #             )
-            #         ],
-            #         type_name='TM',
-            #     )
-            # )
 
             # Add 4 longitudinal muscles
             for k in range(4):
@@ -183,40 +135,6 @@ class ArmEnvironment:
                         type_name='LM',
                     )
                 )
-
-            # Add a clockwise oblique muscle group (4 muscles)
-            # muscle_groups.append(
-            #     MuscleGroup(
-            #         muscles=[
-            #             ObliqueMuscle(
-            #                 muscle_init_angle=np.pi*0.5*m,
-            #                 ratio_muscle_position=OM_ratio_muscle_position,
-            #                 rotation_number=OM_rotation_number,
-            #                 rest_muscle_area=OM_rest_muscle_area,
-            #                 max_muscle_stress=OM_max_muscle_stress,
-            #                 **muscle_dict
-            #             ) for m in range(4)
-            #         ],
-            #         type_name='OM',
-            #     )
-            # )
-
-            # Add a counter-clockwise oblique muscle group (4 muscles)
-            # muscle_groups.append(
-            #     MuscleGroup(
-            #         muscles=[
-            #             ObliqueMuscle(
-            #                 muscle_init_angle=np.pi*0.5*m,
-            #                 ratio_muscle_position=OM_ratio_muscle_position,
-            #                 rotation_number=-OM_rotation_number,
-            #                 rest_muscle_area=OM_rest_muscle_area,
-            #                 max_muscle_stress=OM_max_muscle_stress,
-            #                 **muscle_dict
-            #             ) for m in range(4)
-            #         ],
-            #         type_name='OM',
-            #     )
-            # )
 
             for muscle_group in muscle_groups:
                 muscle_group.set_current_length_as_rest_length(arm)
@@ -236,8 +154,6 @@ class ArmEnvironment:
             callback_params_list=self.muscle_callback_params_list,
         )
 
-        # gravitational_acc = -9.80665
-        # gravitational_acc = 0.1
         gravitational_acc = 1
 
         self.simulator.add_forcing_to(self.shearable_rod).using(
