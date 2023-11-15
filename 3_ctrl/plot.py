@@ -36,8 +36,8 @@ if os.path.exists(img_dir):
     shutil.rmtree(img_dir)
 os.mkdir(img_dir)
 
-num_step = np.shape(pos_list)[0]
-num_seg = np.shape(pos_list)[2]
+num_seg = np.shape(pos_list)[0]
+num_step = np.shape(pos_list)[2]
 for step in range(0, num_step, 5):
     fig = plt.figure(figsize=(10, 10))
     ax = fig.add_subplot(projection='3d')
